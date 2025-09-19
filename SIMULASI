@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Layanan Instansi</title>
+  <style>
+    /* RESET */
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background:#f9f9fb; color:#333; }
+    header { background:linear-gradient(90deg,#004aad,#007bff); color:white; padding:20px; text-align:center; }
+    header h1 { margin-bottom:5px; }
+
+    nav { background:#00337a; display:flex; justify-content:center; flex-wrap:wrap; }
+    nav a { color:white; margin:10px; padding:8px 15px; text-decoration:none; border-radius:6px; transition:0.3s; }
+    nav a:hover { background:#0056d6; }
+
+    section { padding:25px; display:none; animation: fadeIn 0.5s; }
+    section.active { display:block; }
+
+    h2 { margin-bottom:15px; color:#004aad; }
+
+    table { width:100%; border-collapse:collapse; margin:10px 0; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    th, td { padding:12px; border:1px solid #ddd; text-align:center; }
+    th { background:#f1f5ff; }
+
+    .gallery { display:flex; flex-wrap:wrap; gap:15px; }
+    .gallery img { width:220px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:0.3s; }
+    .gallery img:hover { transform:scale(1.05); }
+
+    form { background:white; padding:20px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); max-width:500px; }
+    input, textarea { width:100%; padding:10px; margin:8px 0; border:1px solid #ccc; border-radius:6px; }
+    button { background:#004aad; color:white; padding:10px 15px; border:none; border-radius:6px; cursor:pointer; transition:0.3s; }
+    button:hover { background:#007bff; }
+
+    footer { background:#00337a; color:white; text-align:center; padding:15px; margin-top:30px; }
+
+    ul { list-style:disc; margin-left:20px; }
+
+    /* Animasi */
+    @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+
+    /* Responsif */
+    @media(max-width:768px){
+      nav { flex-direction:column; }
+      .gallery { justify-content:center; }
+      .gallery img { width:90%; max-width:350px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Portal Layanan Instansi</h1>
+  <p>Layanan Terpadu untuk Masyarakat</p>
+</header>
+
+<nav>
+  <a href="#" onclick="showPage('home')">Beranda</a>
+  <a href="#" onclick="showPage('layanan')">Layanan</a>
+  <a href="#" onclick="showPage('jadwal')">Jadwal</a>
+  <a href="#" onclick="showPage('aspirasi')">Aspirasi</a>
+  <a href="#" onclick="showPage('galeri')">Galeri</a>
+  <a href="#" onclick="showPage('arsip')">Arsip</a>
+</nav>
+
+<!-- Halaman Beranda -->
+<section id="home" class="active">
+  <h2>Beranda</h2>
+  <p>Selamat datang di <b>Portal Layanan Instansi</b>. Website ini memudahkan masyarakat dalam mendapatkan informasi layanan, menyampaikan aspirasi, serta melihat kegiatan instansi.</p>
+</section>
+
+<!-- Halaman Layanan -->
+<section id="layanan">
+  <h2>Informasi Layanan</h2>
+  <table>
+    <tr><th>Jenis Layanan</th><th>Syarat</th><th>Biaya</th><th>Lama Proses</th></tr>
+    <tr><td>Surat Keterangan</td><td>KTP</td><td>Gratis</td><td>1 Hari</td></tr>
+    <tr><td>Legalisir Dokumen</td><td>Fotokopi Dokumen</td><td>Gratis</td><td>2 Hari</td></tr>
+    <tr><td>Pengajuan KTP Baru</td><td>KK, Akta Lahir</td><td>Gratis</td><td>7 Hari</td></tr>
+  </table>
+</section>
+
+<!-- Halaman Jadwal -->
+<section id="jadwal">
+  <h2>Jadwal Layanan</h2>
+  <table>
+    <tr><th>Hari</th><th>Layanan</th><th>Petugas</th></tr>
+    <tr><td>Senin</td><td>KTP & KK</td><td>Budi</td></tr>
+    <tr><td>Selasa</td><td>Legalisir</td><td>Siti</td></tr>
+    <tr><td>Rabu</td><td>Surat Keterangan</td><td>Andi</td></tr>
+  </table>
+</section>
+
+<!-- Halaman Aspirasi -->
+<section id="aspirasi">
+  <h2>Aspirasi & Keluhan</h2>
+  <form onsubmit="tambahAspirasi(); return false;">
+    <label>Nama:</label>
+    <input type="text" id="nama" required>
+    <label>Aspirasi/Keluhan:</label>
+    <textarea id="pesan" rows="4" required></textarea>
+    <button type="submit">Kirim</button>
+  </form>
+  <h3 style="margin-top:20px;">Daftar Aspirasi:</h3>
+  <ul id="daftarAspirasi"></ul>
+</section>
+
+<!-- Halaman Galeri -->
+<section id="galeri">
+  <h2>Galeri Kegiatan</h2>
+  <div class="gallery">
+    <img src="https://via.placeholder.com/400x250" alt="Kegiatan 1">
+    <img src="https://via.placeholder.com/400x250" alt="Kegiatan 2">
+    <img src="https://via.placeholder.com/400x250" alt="Kegiatan 3">
+  </div>
+</section>
+
+<!-- Halaman Arsip -->
+<section id="arsip">
+  <h2>Arsip Digital</h2>
+  <ul>
+    <li><a href="#">Peraturan 1 (PDF)</a></li>
+    <li><a href="#">Dokumen Panduan (PDF)</a></li>
+    <li><a href="#">Laporan Tahunan (PDF)</a></li>
+  </ul>
+</section>
+
+<footer>
+  <p>&copy; 2025 Portal Layanan Instansi. Dibuat untuk tujuan tugas.</p>
+</footer>
+
+<script>
+  function showPage(id) {
+    document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+  }
+
+  function tambahAspirasi() {
+    const nama = document.getElementById("nama").value;
+    const pesan = document.getElementById("pesan").value;
+    const li = document.createElement("li");
+    li.textContent = nama + ": " + pesan;
+    document.getElementById("daftarAspirasi").appendChild(li);
+    document.getElementById("nama").value = "";
+    document.getElementById("pesan").value = "";
+  }
+</script>
+
+</body>
+</html>
