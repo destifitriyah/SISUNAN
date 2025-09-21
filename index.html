@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Demo Sistem Arsip Surat - Prototype</title>
+<style>
+  :root{--brand:#0b66c3;--muted:#666}
+  *{box-sizing:border-box}
+  body{font-family:Inter,system-ui,Arial,sans-serif;margin:0;background:#f4f7fb;color:#111}
+  .wrap{max-width:1000px;margin:22px auto;padding:16px}
+  header{display:flex;align-items:center;gap:16px}
+  header h1{margin:0;font-size:20px}
+  .card{background:white;border-radius:10px;padding:14px;box-shadow:0 6px 18px rgba(17,17,17,0.06);margin-top:14px}
+  form .row{display:flex;gap:10px;flex-wrap:wrap}
+  label{display:block;margin:8px 0 4px;font-size:13px}
+  input[type="text"],input[type="date"],select,textarea{padding:8px;border:1px solid #e3e7ee;border-radius:8px;width:100%}
+  input[type="file"]{margin-top:6px}
+  button{background:var(--brand);color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:8px;border:1px solid #e9eef6;text-align:left;font-size:14px}
+  th{background:#f7fbff}
+  .muted{color:var(--muted);font-size:13px}
+  .small{font-size:13px}
+  .flex{display:flex;gap:8px;align-items:center}
+  .search{display:flex;gap:8px;margin-top:10px}
+  .pill{background:#eef6ff;padding:6px 10px;border-radius:999px;font-size:13px;color:var(--brand)}
+  .danger{background:#ffecec;color:#a10000;padding:8px;border-radius:8px}
+  a.link{color:var(--brand);text-decoration:none}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  footer{margin-top:20px;color:var(--muted);font-size:13px;text-align:center}
+  @media(max-width:760px){ .row{flex-direction:column} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>SIMARS (Simulasi Manajemen Arsip Surat)</h1>
+        <div class="muted small">Prototype untuk tugas: simpan & kelola surat masuk / keluar</div>
+      </div>
+    </header>
+
+    <section class="card" id="formCard">
+      <h3>Tambah Surat Baru</h3>
+      <form id="form">
+        <div class="row">
+          <div style="flex:1">
+            <label>Jenis</label>
+            <select id="jenis" required>
+              <option value="Masuk">Masuk</option>
+              <option value="Keluar">Keluar</option>
+            </select>
+          </div>
+          <div style="flex:2">
+            <label>Nomor Surat</label>
+            <input id="nomor" type="text" placeholder="Contoh: 024/ADM/IX/2025" required/>
+          </div>
+          <div style="flex:1">
+            <label>Tanggal</label>
+            <input id="tanggal" type="date" required/>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:8px">
+          <div style="flex:1">
+            <label>Pengirim / Tujuan</label>
+            <input id="pengirim" type="text" placeholder="Nama instansi / orang" required/>
+          </div>
+          <div style="flex:1">
+            <label>Perihal</label>
+            <input id="perihal" type="text" placeholder="Perihal surat" required/>
+          </div>
+        </div>
+
+        <div style="margin-top:8px">
+          <label>Keterangan (opsional)</label>
+          <textarea id="keterangan" rows="2"></textarea>
+        </div>
+
+        <div style="margin-top:8px">
+          <label>File Surat (pdf/jpg/png) — max bebas untuk demo, hati-hati ukuran</label>
+          <input id="file" type="file" accept=".pdf,image/*" />
+        </div>
+
+        <div style="margin-top:10px" class="flex">
+          <button type="submit">Simpan Surat</button>
+          <button type="button" id="btnExport">Export Backup (JSON)</button>
+          <button type="button" id="btnImport">Import Backup</button>
+          <input id="importFile" type="file" accept="application/json" style="display:none" />
+        </div>
+
+        <div id="feedback" style="margin-top:8px"></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>Daftar Arsip</h3>
+        <div class="controls">
+          <div class="search">
+            <input id="q" type="text" placeholder="Cari: nomor, perihal, pengirim..." />
+            <select id="filterJenis">
+              <option value="">Semua</option>
+              <option value="Masuk">Masuk</option>
+              <option value="Keluar">Keluar</option>
+            </select>
+            <button id="btnSearch">Cari</button>
+            <button id="btnClear">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="listArea" style="margin-top:10px;overflow:auto"></div>
+    </section>
+
+    <section class="card">
+      <h3>Catatan & Limitasi</h3>
+      <ul>
+        <li class="small">Ini prototype demo tanpa server. Data disimpan di browser (IndexedDB). Data hanya dapat diakses dari browser/komputer yang sama.</li>
+        <li class="small">Untuk implementasi instansi: butuh server internal / database tersentral, autentikasi, backup periodik, enkripsi, dan SOP akses.</li>
+        <li class="small">Export menghasilkan file JSON (metadata + file Base64). Ukuran file bisa sangat besar jika banyak file.</li>
+      </ul>
+    </section>
+
+    <footer>Prototype SIMARS — untuk tugas. Jangan simpan data sensitif nyata tanpa pengamanan.</footer>
+  </div>
+
+<script>
+/*
+  Simple IndexedDB wrapper for storing records with file blobs.
+  - store name: 'simars-db'
+  - objectStore: 'records', keyPath 'id' (auto increment)
+  record structure:
+    {
+      id: <number>,
+      jenis: 'Masuk'|'Keluar',
+      nomor: '...',
+      tanggal: 'YYYY-MM-DD',
+      pengirim: '...',
+      perihal: '...',
+      keterangan: '...',
+      fileName: 'dok.pdf' (optional),
+      fileType: 'application/pdf' (optional),
+      createdAt: ISOString
+    }
+  file blobs stored in same object as Blob (IndexedDB supports Blobs)
+*/
+
+const DB_NAME = 'simars-db';
+const DB_VERSION = 1;
+const STORE = 'records';
+let db;
+
+function openDB(){
+  return new Promise((res, rej)=>{
+    const r = indexedDB.open(DB_NAME, DB_VERSION);
+    r.onupgradeneeded = () => {
+      const idb = r.result;
+      if(!idb.objectStoreNames.contains(STORE)){
+        const os = idb.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+        os.createIndex('nomor', 'nomor', { unique: false });
+        os.createIndex('tanggal', 'tanggal', { unique: false });
+        os.createIndex('jenis', 'jenis', { unique: false });
+      }
+    };
+    r.onsuccess = () => {
+      db = r.result;
+      res(db);
+    };
+    r.onerror = () => rej(r.error);
+  });
+}
+
+function addRecord(record, fileBlob){
+  return new Promise((res, rej)=>{
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const toPut = Object.assign({}, record);
+    if(fileBlob){
+      toPut.file = fileBlob;
+      toPut.fileName = record.fileName;
+      toPut.fileType = record.fileType;
+    }
+    const req = store.add(toPut);
+    req.onsuccess = ()=> res(req.result);
+    req.onerror = ()=> rej(req.error);
+  });
+}
+
+function getAllRecords(){
+  return new Promise((res, rej)=>{
+    const tx = db.transaction(STORE, 'readonly');
+    const store = tx.objectStore(STORE);
+    const req = store.getAll();
+    req.onsuccess = ()=> res(req.result);
+    req.onerror = ()=> rej(req.error);
+  });
+}
+
+function getRecord(id){
+  return new Promise((res, rej)=>{
+    const tx = db.transaction(STORE, 'readonly');
+    const store = tx.objectStore(STORE);
+    const req = store.get(Number(id));
+    req.onsuccess = ()=> res(req.result);
+    req.onerror = ()=> rej(req.error);
+  });
+}
+
+function deleteRecord(id){
+  return new Promise((res, rej)=>{
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.delete(Number(id));
+    req.onsuccess = ()=> res();
+    req.onerror = ()=> rej(req.error);
+  });
+}
+
+function clearAll(){
+  return new Promise((res, rej)=>{
+    const tx = db.transaction(STORE,'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.clear();
+    req.onsuccess = ()=> res();
+    req.onerror = ()=> rej(req.error);
+  });
+}
+
+// UI interactions
+document.addEventListener('DOMContentLoaded', async ()=>{
+  await openDB();
+  refreshList();
+
+  document.getElementById('form').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const jenis = document.getElementById('jenis').value;
+    const nomor = document.getElementById('nomor').value.trim();
+    const tanggal = document.getElementById('tanggal').value;
+    const pengirim = document.getElementById('pengirim').value.trim();
+    const perihal = document.getElementById('perihal').value.trim();
+    const keterangan = document.getElementById('keterangan').value.trim();
+    const fileInput = document.getElementById('file');
+    const feedback = document.getElementById('feedback');
+
+    if(!nomor || !tanggal || !pengirim || !perihal){ feedback.innerHTML = '<div class="danger">Isi semua field wajib (nomor, tanggal, pengirim, perihal).</div>'; return; }
+    let fileBlob = null;
+    let fileName = '';
+    let fileType = '';
+    if(fileInput.files && fileInput.files[0]){
+      fileBlob = fileInput.files[0];
+      fileName = fileBlob.name;
+      fileType = fileBlob.type || 'application/octet-stream';
+      // optional: check size, warn if large
+      if(fileBlob.size > 20*1024*1024){
+        feedback.innerHTML = '<div class="danger">File besar (>20MB). Untuk demo, gunakan file lebih kecil.</div>';
+        return;
+      }
+    }
+
+    const record = { jenis, nomor, tanggal, pengirim, perihal, keterangan, fileName, fileType, createdAt: new Date().toISOString() };
+    try{
+      const id = await addRecord(record, fileBlob);
+      feedback.innerHTML = '<div class="pill">Berhasil disimpan (ID: '+id+')</div>';
+      document.getElementById('form').reset();
+      setTimeout(()=> feedback.innerHTML = '', 3000);
+      refreshList();
+    }catch(err){
+      feedback.innerHTML = '<div class="danger">Gagal menyimpan: '+err+'</div>';
+    }
+  });
+
+  document.getElementById('btnSearch').addEventListener('click', refreshList);
+  document.getElementById('q').addEventListener('keyup', (e)=>{ if(e.key==='Enter') refreshList(); });
+  document.getElementById('filterJenis').addEventListener('change', refreshList);
+  document.getElementById('btnClear').addEventListener('click', ()=>{
+    document.getElementById('q').value='';
+    document.getElementById('filterJenis').value='';
+    refreshList();
+  });
+
+  // Export JSON
+  document.getElementById('btnExport').addEventListener('click', async ()=>{
+    const all = await getAllRecords();
+    // convert Blobs to base64 (may be heavy)
+    const converted = await Promise.all(all.map(async r=>{
+      const copy = Object.assign({}, r);
+      if(r.file){
+        copy.fileData = await blobToBase64(r.file);
+        // remove the actual blob to avoid cyclic issues
+        delete copy.file;
+      }
+      return copy;
+    }));
+    const blob = new Blob([JSON.stringify(converted, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'simars-backup-'+(new Date().toISOString().slice(0,10))+'.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Import
+  const importFile = document.getElementById('importFile');
+  document.getElementById('btnImport').addEventListener('click', ()=> importFile.click());
+  importFile.addEventListener('change', async (e)=>{
+    if(!e.target.files[0]) return;
+    const f = e.target.files[0];
+    const txt = await f.text();
+    let parsed;
+    try{ parsed = JSON.parse(txt); } catch(err){ alert('File bukan JSON valid'); return; }
+    if(!Array.isArray(parsed)){ alert('Format backup tidak dikenal'); return; }
+    // ask confirm
+    if(!confirm('Import backup akan menambah data ke database saat ini. Lanjutkan?')) return;
+    for(const r of parsed){
+      // rebuild blob if fileData present
+      let blob = null;
+      if(r.fileData){
+        blob = base64ToBlob(r.fileData, r.fileType || 'application/octet-stream');
+      }
+      // remove id so IndexedDB autogen new id
+      delete r.id;
+      // keep fileName & fileType props
+      try{ await addRecord(r, blob); } catch(err){ console.error('gagal import', err); }
+    }
+    alert('Import selesai');
+    importFile.value = '';
+    refreshList();
+  });
+
+}); // DOMContentLoaded
+
+async function refreshList(){
+  const q = (document.getElementById('q').value || '').toLowerCase();
+  const jenisFilter = document.getElementById('filterJenis').value;
+  const all = await getAllRecords();
+  // filter & search
+  const filtered = all.filter(r=>{
+    if(jenisFilter && r.jenis !== jenisFilter) return false;
+    if(!q) return true;
+    return (r.nomor||'').toLowerCase().includes(q) ||
+           (r.perihal||'').toLowerCase().includes(q) ||
+           (r.pengirim||'').toLowerCase().includes(q) ||
+           (r.keterangan||'').toLowerCase().includes(q);
+  }).sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+
+  const area = document.getElementById('listArea');
+  if(!filtered.length){ area.innerHTML = '<div class="muted small">Belum ada arsip yang cocok.</div>'; return; }
+
+  let html = '<table><thead><tr><th>#</th><th>Jenis</th><th>Nomor</th><th>Tanggal</th><th>Pengirim/Tujuan</th><th>Perihal</th><th>Aksi</th></tr></thead><tbody>';
+  filtered.forEach(r=>{
+    html += `<tr>
+      <td>${r.id||'-'}</td>
+      <td>${r.jenis||''}</td>
+      <td>${escapeHtml(r.nomor||'')}</td>
+      <td>${r.tanggal||''}</td>
+      <td>${escapeHtml(r.pengirim||'')}</td>
+      <td>${escapeHtml(truncate(r.perihal||'',60))}</td>
+      <td>
+        <button onclick="viewDetail(${r.id})">Lihat</button>
+        <button onclick="downloadFile(${r.id})" ${r.file? '':'disabled'}>Download</button>
+        <button onclick="hapus(${r.id})" style="background:#c33;margin-left:6px">Hapus</button>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  area.innerHTML = html;
+}
+
+function truncate(s,n){ return s.length>n? s.slice(0,n-1)+'…':s; }
+function escapeHtml(s){
+  return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+}
+
+async function viewDetail(id){
+  const r = await getRecord(id);
+  if(!r){ alert('Data tidak ditemukan'); return; }
+  let info = `ID: ${r.id}\nJenis: ${r.jenis}\nNomor: ${r.nomor}\nTanggal: ${r.tanggal}\nPengirim: ${r.pengirim}\nPerihal: ${r.perihal}\nKeterangan: ${r.keterangan||'-'}\nFile: ${r.fileName||'-'}`;
+  if(confirm(info + '\n\nKlik OK untuk lihat file (jika ada) di tab baru, atau Cancel untuk tutup')) {
+    if(r.file){
+      // create URL from blob
+      const url = URL.createObjectURL(r.file);
+      window.open(url, '_blank');
+      // revoke after some time
+      setTimeout(()=> URL.revokeObjectURL(url), 20000);
+    } else alert('Tidak ada file tersedia untuk arsip ini.');
+  }
+}
+
+async function downloadFile(id){
+  const r = await getRecord(id);
+  if(!r || !r.file){ alert('File tidak ditemukan'); return; }
+  const blob = r.file;
+  const a = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  a.href = url;
+  a.download = r.fileName || ('surat-'+(r.nomor||r.id));
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Hapus record
+async function hapus(id){
+  if(!confirm('Hapus arsip ID '+id+' ?')) return;
+  await deleteRecord(Number(id));
+  refreshList();
+}
+
+// helpers: blob <-> base64 (for export/import)
+function blobToBase64(blob){
+  return new Promise((res)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> {
+      // result: data:*/*;base64,....
+      const str = reader.result;
+      // remove the prefix "data:*/*;base64," => keep only base64
+      const idx = str.indexOf('base64,');
+      const base64 = idx>=0? str.slice(idx+7) : str;
+      res(base64);
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+function base64ToBlob(base64, type='application/octet-stream'){
+  const binary = atob(base64);
+  let len = binary.length;
+  const arr = new Uint8Array(len);
+  for(let i=0;i<len;i++) arr[i]=binary.charCodeAt(i);
+  return new Blob([arr], {type});
+}
+
+// very small escape for JSON debug
+function pretty(obj){ return JSON.stringify(obj,null,2); }
+</script>
+</body>
+</html>
